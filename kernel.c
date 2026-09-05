@@ -116,7 +116,26 @@ const unsigned char keyboard_shift_map[64] = {
     [0x39] = ' ',
 };
 
+int strcmp(const char* a, const char* b)
+{
+    int i = 0;
+
+    while (a[i] != '\0' && b[i] != '\0')
+    {
+        if (a[i] != b[i])
+            return 0;
+
+        i++;
+    }
+
+    return a[i] == b[i];
+}
+
 __attribute__((section(".text.start")))
+
+
+
+
 void _start()
 {
     clear();
@@ -137,26 +156,12 @@ void _start()
             if (scancode == 0x2A || scancode == 0x36)
             {
                 shift = 1;
-
-                volatile unsigned char* video =
-                    (volatile unsigned char*)0xB8000;
-
-                video[0] = 'S';
-                video[1] = 0x0A;
-
                 continue;
             }
 
             if (scancode == 0xAA || scancode == 0xB6)
             {
                 shift = 0;
-
-                volatile unsigned char* video =
-                    (volatile unsigned char*)0xB8000;
-
-                video[0] = 's';
-                video[1] = 0x07;
-
                 continue;
             }
 
@@ -187,8 +192,43 @@ void _start()
                 }
                 else if (key == '\n')
                 {
-                    cursor = ((cursor / 80) + 1) * 80;
-                    print("> ");
+                    command[command_length] = '\0';
+
+                    if (strcmp(command, "help"))
+                    {
+                        cursor = ((cursor / 80) + 1) * 80;
+
+                        print("Commandes disponibles:\n");
+                        print("help\n");
+                        print("clear\n");
+                        print("about\n");
+                        print("> ");
+                    }
+                    else if (strcmp(command, "clear"))
+                    {
+                        clear();
+
+                        print("Bienvenue dans mon OS !\n");
+                        print_color("Version 0.1\n", 0x0A);
+                        print("Systeme pret.\n\n");
+                        print("> ");
+                    }
+                    else if (strcmp(command, "about"))
+                    {
+                        cursor = ((cursor / 80) + 1) * 80;
+
+                        print("Mon OS 32 bits\n");
+                        print("Version 0.1\n");
+                        print("Developpe en C et assembleur x86\n");
+                        print("> ");
+                    }
+                    else
+                    {
+                        cursor = ((cursor / 80) + 1) * 80;
+                        print("> ");
+                    }
+
+                    command_length = 0;
                 }
                 else if (key != 0)
                 {
