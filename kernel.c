@@ -1,13 +1,34 @@
+#define SCREEN_WIDTH  1920
+#define SCREEN_HEIGHT 1080
+#define BYTES_PER_PIXEL 4
+
+#define WINDOW_X 160
+#define WINDOW_Y 100
+#define WINDOW_WIDTH 1600
+#define WINDOW_HEIGHT 880
+#define TITLE_HEIGHT 40
+#define CONTENT_X 200
+#define CONTENT_Y 160
+
 void print(const char* message);
 void print_color(const char* message, unsigned char color);
 void clear();
 unsigned char inb(unsigned short port);
+void outb(unsigned short port, unsigned char value);
 
 int cursor = 0;
 int shift = 0;
 
 char command[80];
 int command_length = 0;
+
+int text_x = 80;
+int text_y = 100;
+
+
+/* =========================================================
+   CLAVIER AZERTY
+   ========================================================= */
 
 const unsigned char keyboard_map[64] = {
     [0x02] = '&',
@@ -22,8 +43,6 @@ const unsigned char keyboard_map[64] = {
     [0x0B] = 'a',
     [0x0C] = ')',
     [0x0D] = '=',
-    [0x0E] = '\b',
-    [0x0F] = '\t',
 
     [0x10] = 'a',
     [0x11] = 'z',
@@ -37,6 +56,7 @@ const unsigned char keyboard_map[64] = {
     [0x19] = 'p',
     [0x1A] = '^',
     [0x1B] = '$',
+
     [0x1C] = '\n',
 
     [0x1E] = 'q',
@@ -60,8 +80,9 @@ const unsigned char keyboard_map[64] = {
     [0x33] = ';',
     [0x34] = ':',
     [0x35] = '!',
-    [0x39] = ' ',
+    [0x39] = ' '
 };
+
 
 const unsigned char keyboard_shift_map[64] = {
     [0x02] = '1',
@@ -76,8 +97,6 @@ const unsigned char keyboard_shift_map[64] = {
     [0x0B] = '0',
     [0x0C] = '0',
     [0x0D] = '+',
-    [0x0E] = '\b',
-    [0x0F] = '\t',
 
     [0x10] = 'A',
     [0x11] = 'Z',
@@ -113,8 +132,13 @@ const unsigned char keyboard_shift_map[64] = {
     [0x33] = '.',
     [0x34] = '/',
 
-    [0x39] = ' ',
+    [0x39] = ' '
 };
+
+
+/* =========================================================
+   STRING
+   ========================================================= */
 
 int strcmp(const char* a, const char* b)
 {
@@ -131,42 +155,828 @@ int strcmp(const char* a, const char* b)
     return a[i] == b[i];
 }
 
+
+/* =========================================================
+   POLICE 5x7
+   ========================================================= */
+
+const unsigned char font[][5] = {
+
+    /* A */
+    {0x1E, 0x05, 0x05, 0x1E, 0x00},
+
+    /* B */
+    {0x1F, 0x15, 0x15, 0x0A, 0x00},
+
+    /* C */
+    {0x0E, 0x11, 0x11, 0x11, 0x00},
+
+    /* D */
+    {0x1F, 0x11, 0x11, 0x0E, 0x00},
+
+    /* E */
+    {0x1F, 0x15, 0x15, 0x11, 0x00},
+
+    /* F */
+    {0x1F, 0x05, 0x05, 0x01, 0x00},
+
+    /* G */
+    {0x0E, 0x11, 0x15, 0x1D, 0x00},
+
+    /* H */
+    {0x1F, 0x04, 0x04, 0x1F, 0x00},
+
+    /* I */
+    {0x11, 0x1F, 0x11, 0x00, 0x00},
+
+    /* J */
+    {0x08, 0x10, 0x10, 0x0F, 0x00},
+
+    /* K */
+    {0x1F, 0x04, 0x0A, 0x11, 0x00},
+
+    /* L */
+    {0x1F, 0x10, 0x10, 0x10, 0x00},
+
+    /* M */
+    {0x1F, 0x02, 0x04, 0x02, 0x1F},
+
+    /* N */
+    {0x1F, 0x02, 0x04, 0x08, 0x1F},
+
+    /* O */
+    {0x0E, 0x11, 0x11, 0x0E, 0x00},
+
+    /* P */
+    {0x1F, 0x05, 0x05, 0x02, 0x00},
+
+    /* Q */
+    {0x0E, 0x11, 0x19, 0x1E, 0x00},
+
+    /* R */
+    {0x1F, 0x05, 0x0D, 0x12, 0x00},
+
+    /* S */
+    {0x12, 0x15, 0x15, 0x09, 0x00},
+
+    /* T */
+    {0x01, 0x1F, 0x01, 0x01, 0x00},
+
+    /* U */
+    {0x0F, 0x10, 0x10, 0x0F, 0x00},
+
+    /* V */
+    {0x07, 0x08, 0x10, 0x08, 0x07},
+
+    /* W */
+    {0x0F, 0x10, 0x0C, 0x10, 0x0F},
+
+    /* X */
+    {0x11, 0x0A, 0x04, 0x0A, 0x11},
+
+    /* Y */
+    {0x03, 0x04, 0x18, 0x04, 0x03},
+
+    /* Z */
+    {0x19, 0x15, 0x13, 0x00, 0x00},
+
+    /* 0 */
+    {0x0E, 0x11, 0x11, 0x0E, 0x00},
+
+    /* 1 */
+    {0x12, 0x1F, 0x10, 0x00, 0x00},
+
+    /* 2 */
+    {0x19, 0x15, 0x15, 0x12, 0x00},
+
+    /* 3 */
+    {0x11, 0x15, 0x15, 0x0A, 0x00},
+
+    /* 4 */
+    {0x07, 0x04, 0x1F, 0x04, 0x00},
+
+    /* 5 */
+    {0x17, 0x15, 0x15, 0x09, 0x00},
+
+    /* 6 */
+    {0x0E, 0x15, 0x15, 0x08, 0x00},
+
+    /* 7 */
+    {0x01, 0x01, 0x1D, 0x03, 0x00},
+
+    /* 8 */
+    {0x0A, 0x15, 0x15, 0x0A, 0x00},
+
+    /* 9 */
+    {0x02, 0x15, 0x15, 0x0E, 0x00}
+};
+
+
+/* =========================================================
+   FRAMEBUFFER
+   ========================================================= */
+
+void putpixel(int x, int y,
+              unsigned char r,
+              unsigned char g,
+              unsigned char b)
+{
+    unsigned int framebuffer = *(unsigned int*)0x7000;
+    unsigned short pitch = *(unsigned short*)0x7004;
+
+    volatile unsigned char* video =
+        (volatile unsigned char*)framebuffer;
+
+    if (x < 0 || x >= SCREEN_WIDTH || y < 0 || y >= SCREEN_HEIGHT)
+        return;
+
+    unsigned int offset = y * pitch + x * BYTES_PER_PIXEL;
+
+    video[offset + 0] = b;
+    video[offset + 1] = g;
+    video[offset + 2] = r;
+}
+
+
+void fill_rect(int x, int y, int width, int height,
+               unsigned char r,
+               unsigned char g,
+               unsigned char b)
+{
+    unsigned int framebuffer = *(unsigned int*)0x7000;
+    unsigned short pitch = *(unsigned short*)0x7004;
+
+    volatile unsigned char* video =
+        (volatile unsigned char*)framebuffer;
+
+    for (int py = y; py < y + height; py++)
+    {
+        unsigned int offset = py * pitch + x * BYTES_PER_PIXEL;
+
+        for (int px = 0; px < width; px++)
+        {
+            video[offset + 0] = b;
+            video[offset + 1] = g;
+            video[offset + 2] = r;
+
+            offset += BYTES_PER_PIXEL;
+        }
+    }
+}
+
+
+/* =========================================================
+   FENETRE
+   ========================================================= */
+
+void graphics_test()
+{
+    unsigned int framebuffer = *(unsigned int*)0x7000;
+    unsigned short pitch = *(unsigned short*)0x7004;
+
+    volatile unsigned char* video =
+        (volatile unsigned char*)framebuffer;
+
+    /* Fond */
+    for (int y = 0; y < SCREEN_HEIGHT; y++)
+    {
+        for (int x = 0; x < SCREEN_WIDTH; x++)
+        {
+            unsigned int offset = y * pitch + x * BYTES_PER_PIXEL;
+
+            video[offset + 0] = 30;
+            video[offset + 1] = 30;
+            video[offset + 2] = 35;
+        }
+    }
+
+    /* Fenêtre principale */
+    for (int y = WINDOW_Y; y < WINDOW_Y + WINDOW_HEIGHT; y++)
+    {
+        for (int x = WINDOW_X; x < WINDOW_X + WINDOW_WIDTH; x++)
+        {
+            unsigned int offset = y * pitch + x * BYTES_PER_PIXEL;
+
+            video[offset + 0] = 230;
+            video[offset + 1] = 230;
+            video[offset + 2] = 230;
+        }
+    }
+
+    /* Barre de titre */
+    for (int y = WINDOW_Y; y < WINDOW_Y + TITLE_HEIGHT; y++)
+    {
+        for (int x = WINDOW_X; x < WINDOW_X + WINDOW_WIDTH; x++)
+        {
+            unsigned int offset = y * pitch + x * BYTES_PER_PIXEL;
+
+            video[offset + 0] = 60;
+            video[offset + 1] = 60;
+            video[offset + 2] = 65;
+        }
+    }
+
+    /* Bouton rouge */
+    for (int y = WINDOW_Y + 10; y < WINDOW_Y + 28; y++)
+    {
+        for (int x = WINDOW_X + 14; x < WINDOW_X + 32; x++)
+        {
+            unsigned int offset = y * pitch + x * BYTES_PER_PIXEL;
+
+            video[offset + 0] = 220;
+            video[offset + 1] = 60;
+            video[offset + 2] = 60;
+        }
+    }
+
+    /* Bouton jaune */
+    for (int y = WINDOW_Y + 10; y < WINDOW_Y + 28; y++)
+    {
+        for (int x = WINDOW_X + 40; x < WINDOW_X + 58; x++)
+        {
+            unsigned int offset = y * pitch + x * BYTES_PER_PIXEL;
+
+            video[offset + 0] = 230;
+            video[offset + 1] = 190;
+            video[offset + 2] = 50;
+        }
+    }
+
+    /* Bouton vert */
+    for (int y = WINDOW_Y + 10; y < WINDOW_Y + 28; y++)
+    {
+        for (int x = WINDOW_X + 66; x < WINDOW_X + 84; x++)
+        {
+            unsigned int offset = y * pitch + x * BYTES_PER_PIXEL;
+
+            video[offset + 0] = 60;
+            video[offset + 1] = 190;
+            video[offset + 2] = 80;
+        }
+    }
+}
+
+
+/* =========================================================
+   TEXTE
+   ========================================================= */
+
+void draw_char(int x, int y, char c,
+               unsigned char r,
+               unsigned char g,
+               unsigned char b)
+{
+    const unsigned char* glyph;
+
+    if (c >= 'a' && c <= 'z')
+        c -= 'a' - 'A';
+
+    if (c >= 'A' && c <= 'Z')
+    {
+        glyph = font[c - 'A'];
+    }
+    else if (c >= '0' && c <= '9')
+    {
+        glyph = font[26 + (c - '0')];
+    }
+    else if (c == '.')
+    {
+        putpixel(x + 2, y + 6, r, g, b);
+        putpixel(x + 3, y + 6, r, g, b);
+        putpixel(x + 2, y + 7, r, g, b);
+        putpixel(x + 3, y + 7, r, g, b);
+
+        return;
+    }
+    else if (c == '>')
+    {
+        putpixel(x + 0, y + 0, r, g, b);
+        putpixel(x + 1, y + 1, r, g, b);
+        putpixel(x + 2, y + 2, r, g, b);
+        putpixel(x + 1, y + 3, r, g, b);
+        putpixel(x + 0, y + 4, r, g, b);
+
+        return;
+    }
+    else
+    {
+        return;
+    }
+
+    for (int col = 0; col < 5; col++)
+    {
+        for (int row = 0; row < 7; row++)
+        {
+            if (glyph[col] & (1 << row))
+            {
+                putpixel(
+                    x + col * 2,
+                    y + row * 2,
+                    r, g, b
+                );
+
+                putpixel(
+                    x + col * 2 + 1,
+                    y + row * 2,
+                    r, g, b
+                );
+
+                putpixel(
+                    x + col * 2,
+                    y + row * 2 + 1,
+                    r, g, b
+                );
+
+                putpixel(
+                    x + col * 2 + 1,
+                    y + row * 2 + 1,
+                    r, g, b
+                );
+            }
+        }
+    }
+}
+
+
+void draw_string(int x, int y,
+                 const char* text,
+                 unsigned char r,
+                 unsigned char g,
+                 unsigned char b)
+{
+    while (*text != '\0')
+    {
+        if (*text == ' ')
+        {
+            x += 12;
+        }
+        else
+        {
+            draw_char(x, y, *text, r, g, b);
+            x += 12;
+        }
+
+        text++;
+    }
+}
+
+
+/* =========================================================
+   TERMINAL
+   ========================================================= */
+
+void clear_terminal()
+{
+    fill_rect(
+        WINDOW_X,
+        WINDOW_Y + TITLE_HEIGHT,
+        WINDOW_WIDTH,
+        WINDOW_HEIGHT - TITLE_HEIGHT,
+        230,
+        230,
+        230
+    );
+
+    text_x = CONTENT_X;
+    text_y = CONTENT_Y;
+}
+
+
+void redraw_command()
+{
+    fill_rect(
+        WINDOW_X,
+        text_y,
+        WINDOW_WIDTH,
+        18,
+        230,
+        230,
+        230
+    );
+
+    draw_string(
+        CONTENT_X,
+        text_y,
+        "> ",
+        20, 20, 20
+    );
+
+    draw_string(
+        CONTENT_X + 24,
+        text_y,
+        command,
+        20, 20, 20
+    );
+
+    text_x = CONTENT_X + 24 + command_length * 12;
+}
+
+
+/* =========================================================
+   COMMANDES
+   ========================================================= */
+
+void execute_command()
+{
+    if (strcmp(command, "help"))
+    {
+        text_y += 16;
+
+        draw_string(
+            CONTENT_X,
+            text_y,
+            "COMMANDES",
+            20, 20, 20
+        );
+
+        text_y += 16;
+
+        draw_string(
+            CONTENT_X,
+            text_y,
+            "HELP ABOUT CLEAR",
+            20, 20, 20
+        );
+    }
+    else if (strcmp(command, "about"))
+    {
+        text_y += 16;
+
+        draw_string(
+            CONTENT_X,
+            text_y,
+            "MON OS VERSION 0.1",
+            20, 20, 20
+        );
+    }
+    else if (strcmp(command, "clear"))
+    {
+        clear_terminal();
+    }
+    else if (command_length > 0)
+    {
+        text_y += 16;
+
+        draw_string(
+            CONTENT_X,
+            text_y,
+            "COMMANDE INCONNUE",
+            20, 20, 20
+        );
+    }
+
+    command_length = 0;
+    command[0] = '\0';
+
+    if (text_y > WINDOW_Y + WINDOW_HEIGHT - 50)
+    {
+        clear_terminal();
+    }
+
+    draw_string(
+        CONTENT_X,
+        text_y,
+        "> ",
+        20, 20, 20
+    );
+
+    text_x = CONTENT_X + 24;
+}
+
+
+/* =========================================================
+   SOURIS PS/2
+   ========================================================= */
+
+int mouse_x = 300;
+int mouse_y = 180;
+
+int mouse_packet_index = 0;
+unsigned char mouse_packet[3];
+
+
+/*
+   Attendre que le contrôleur puisse recevoir une commande.
+ */
+void mouse_wait_write()
+{
+    int timeout = 100000;
+
+    while ((inb(0x64) & 2) && timeout > 0)
+        timeout--;
+}
+
+
+/*
+   Attendre qu'une donnée soit disponible.
+ */
+void mouse_wait_read()
+{
+    int timeout = 100000;
+
+    while (!(inb(0x64) & 1) && timeout > 0)
+        timeout--;
+}
+
+
+/*
+   Envoyer une commande à la souris PS/2.
+ */
+unsigned char mouse_command(unsigned char command)
+{
+    mouse_wait_write();
+
+    outb(0x64, 0xD4);
+
+    mouse_wait_write();
+
+    outb(0x60, command);
+
+    mouse_wait_read();
+
+    return inb(0x60);
+}
+
+
+/*
+   Initialisation de la souris.
+ */
+void mouse_init()
+{
+    /* Activer le port souris PS/2 */
+    mouse_wait_write();
+    outb(0x64, 0xA8);
+
+    /* Paramètres par défaut */
+    mouse_command(0xF6);
+
+    /* Activer les données */
+    mouse_command(0xF4);
+}
+
+
+/*
+   Dessiner / effacer le curseur avec XOR.
+   Cela évite d'avoir besoin de sauvegarder
+   le contenu situé sous le curseur.
+ */
+void mouse_cursor_xor(int x, int y)
+{
+    unsigned int framebuffer = *(unsigned int*)0x7000;
+    unsigned short pitch = *(unsigned short*)0x7004;
+
+    volatile unsigned char* video =
+        (volatile unsigned char*)framebuffer;
+
+    int points[24][2] = {
+        {0,0},
+        {1,0},
+        {0,1},
+        {1,1},
+
+        {0,2},
+        {1,2},
+        {2,2},
+        {3,2},
+
+        {0,3},
+        {1,3},
+        {2,3},
+
+        {0,4},
+        {1,4},
+        {2,4},
+
+        {0,5},
+        {1,5},
+        {3,5},
+
+        {0,6},
+        {1,6},
+        {4,6},
+
+        {0,7},
+        {5,7},
+
+        {0,8},
+        {6,8}
+    };
+
+    for (int i = 0; i < 24; i++)
+    {
+        int px = x + points[i][0];
+        int py = y + points[i][1];
+
+        if (px >= 0 && px < SCREEN_WIDTH &&
+            py >= 0 && py < SCREEN_HEIGHT)
+        {
+            unsigned int offset =
+                py * pitch + px * BYTES_PER_PIXEL;
+
+            video[offset + 0] ^= 0xFF;
+            video[offset + 1] ^= 0xFF;
+            video[offset + 2] ^= 0xFF;
+        }
+    }
+}
+
+
+/*
+   Lire un octet souris.
+ */
+int mouse_read_byte(unsigned char* value)
+{
+    if (!(inb(0x64) & 1))
+        return 0;
+
+    if (!(inb(0x64) & 0x20))
+        return 0;
+
+    *value = inb(0x60);
+
+    return 1;
+}
+
+
+/*
+   Traiter les 3 octets d'un paquet souris.
+ */
+void mouse_process_byte(unsigned char value)
+{
+    mouse_packet[mouse_packet_index] = value;
+
+    if (mouse_packet_index == 0)
+    {
+        /*
+           Le bit 3 doit toujours être à 1
+           sur le premier octet.
+        */
+        if (!(value & 0x08))
+            return;
+    }
+
+    mouse_packet_index++;
+
+    if (mouse_packet_index < 3)
+        return;
+
+    mouse_packet_index = 0;
+
+    /*
+       Vérifier overflow X/Y.
+    */
+    if (mouse_packet[0] & 0xC0)
+        return;
+
+    int dx = (int)(signed char)mouse_packet[1];
+    int dy = (int)(signed char)mouse_packet[2];
+
+    /*
+       Effacer ancienne position.
+    */
+    mouse_cursor_xor(mouse_x, mouse_y);
+
+    mouse_x += dx;
+    mouse_y -= dy;
+
+    /*
+       Limites écran.
+    */
+    if (mouse_x < 0)
+        mouse_x = 0;
+
+    if (mouse_y < 0)
+        mouse_y = 0;
+
+    if (mouse_x > SCREEN_WIDTH - 8)
+        mouse_x = SCREEN_WIDTH - 8;
+
+    if (mouse_y > SCREEN_HEIGHT - 10)
+        mouse_y = SCREEN_HEIGHT - 10;
+
+    /*
+       Dessiner nouvelle position.
+    */
+    mouse_cursor_xor(mouse_x, mouse_y);
+}
+
+
+/* =========================================================
+   POINT D'ENTREE
+   ========================================================= */
+
 __attribute__((section(".text.start")))
-
-
-
-
 void _start()
 {
-    clear();
+    graphics_test();
 
-    print("Bienvenue dans mon OS !\n");
-    print_color("Version 0.1\n", 0x0A);
-    print("Systeme pret.\n\n");
-    print("> ");
+    draw_string(
+        CONTENT_X,
+        190,
+        "BIENVENUE DANS MON OS",
+        20, 20, 20
+    );
+
+    draw_string(
+        CONTENT_X,
+        220,
+        "VERSION 0.1",
+        20, 20, 20
+    );
+
+    draw_string(
+        CONTENT_X,
+        250,
+        "SYSTEME PRET",
+        20, 20, 20
+    );
+
+    text_x = CONTENT_X;
+    text_y = 300;
+
+    draw_string(
+        CONTENT_X,
+        text_y,
+        "> ",
+        20, 20, 20
+    );
+
+    text_x = CONTENT_X + 24;
+
+    /* Initialisation souris */
+    mouse_init();
+
+    /* Curseur initial */
+    mouse_cursor_xor(mouse_x, mouse_y);
+
 
     while (1)
     {
+        /*
+           Vérifier si une donnée est disponible.
+        */
         if (inb(0x64) & 1)
         {
-            unsigned char scancode = inb(0x60);
+            unsigned char status = inb(0x64);
+            unsigned char value = inb(0x60);
 
-            
 
+            /*
+               ==========================================
+               DONNEE SOURIS
+               ==========================================
+             */
+            if (status & 0x20)
+            {
+                mouse_process_byte(value);
+                continue;
+            }
+
+
+            /*
+               ==========================================
+               DONNEE CLAVIER
+               ==========================================
+             */
+
+            unsigned char scancode = value;
+
+
+            /* Shift press */
             if (scancode == 0x2A || scancode == 0x36)
             {
                 shift = 1;
                 continue;
             }
 
+
+            /* Shift release */
             if (scancode == 0xAA || scancode == 0xB6)
             {
                 shift = 0;
                 continue;
             }
 
+
+            /* Backspace */
+            if (scancode == 0x0E)
+            {
+                if (command_length > 0)
+                {
+                    command_length--;
+                    command[command_length] = '\0';
+
+                    redraw_command();
+                }
+
+                continue;
+            }
+
+
+            /* Ignorer les relâchements */
             if (scancode & 0x80)
                 continue;
+
 
             if (scancode < sizeof(keyboard_map))
             {
@@ -177,79 +987,50 @@ void _start()
                 else
                     key = keyboard_map[scancode];
 
-                if (key == '\b')
-                {
-                    if (cursor > 2)
-                    {
-                        cursor--;
 
-                        volatile unsigned char* video =
-                            (volatile unsigned char*)0xB8000;
+                if (key == 0)
+                    continue;
 
-                        video[cursor * 2] = ' ';
-                        video[cursor * 2 + 1] = 0x07;
-                    }
-                }
-                else if (key == '\n')
+
+                /* Entrée */
+                if (key == '\n')
                 {
                     command[command_length] = '\0';
 
-                    if (strcmp(command, "help"))
-                    {
-                        cursor = ((cursor / 80) + 1) * 80;
-
-                        print("Commandes disponibles:\n");
-                        print("help\n");
-                        print("clear\n");
-                        print("about\n");
-                        print("> ");
-                    }
-                    else if (strcmp(command, "clear"))
-                    {
-                        clear();
-
-                        print("Bienvenue dans mon OS !\n");
-                        print_color("Version 0.1\n", 0x0A);
-                        print("Systeme pret.\n\n");
-                        print("> ");
-                    }
-                    else if (strcmp(command, "about"))
-                    {
-                        cursor = ((cursor / 80) + 1) * 80;
-
-                        print("Mon OS 32 bits\n");
-                        print("Version 0.1\n");
-                        print("Developpe en C et assembleur x86\n");
-                        print("> ");
-                    }
-                    else
-                    {
-                        cursor = ((cursor / 80) + 1) * 80;
-                        print("> ");
-                    }
-
-                    command_length = 0;
+                    execute_command();
+                    continue;
                 }
-                else if (key != 0)
+
+
+                /* Caractère normal */
+                if (command_length < 79)
                 {
-                    volatile unsigned char* video =
-                        (volatile unsigned char*)0xB8000;
+                    char temp[2];
 
-                    video[cursor * 2] = key;
-                    video[cursor * 2 + 1] = 0x07;
+                    temp[0] = key;
+                    temp[1] = '\0';
 
-                    if (command_length < 79)
-                    {
-                        command[command_length] = key;
-                        command_length++;
-                    }
+                    draw_string(
+                        text_x,
+                        text_y,
+                        temp,
+                        20, 20, 20
+                    );
 
-                    cursor++;
+                    command[command_length] = key;
+                    command_length++;
+
+                    text_x += 12;
                 }
             }
         }
     }
 }
+
+
+/* =========================================================
+   PORT I/O
+   ========================================================= */
 
 unsigned char inb(unsigned short port)
 {
@@ -263,6 +1044,22 @@ unsigned char inb(unsigned short port)
 
     return value;
 }
+
+
+void outb(unsigned short port, unsigned char value)
+{
+    __asm__ volatile (
+        "outb %0, %1"
+        :
+        : "a"(value),
+          "Nd"(port)
+    );
+}
+
+
+/* =========================================================
+   ANCIENNES FONCTIONS VGA
+   ========================================================= */
 
 void clear()
 {
@@ -278,12 +1075,15 @@ void clear()
     cursor = 0;
 }
 
+
 void print(const char* message)
 {
     print_color(message, 0x07);
 }
 
-void print_color(const char* message, unsigned char color)
+
+void print_color(const char* message,
+                 unsigned char color)
 {
     volatile unsigned char* video =
         (volatile unsigned char*)0xB8000;
@@ -292,7 +1092,8 @@ void print_color(const char* message, unsigned char color)
     {
         if (*message == '\n')
         {
-            cursor = ((cursor / 80) + 1) * 80;
+            cursor =
+                ((cursor / 80) + 1) * 80;
         }
         else
         {

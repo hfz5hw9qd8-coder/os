@@ -29,13 +29,13 @@ kernel.bin: kernel.elf
 		kernel.elf kernel.bin
 
 os.img: boot.bin kernel.bin
-	@test $$(stat -f%z kernel.bin) -le 1536 || (echo "ERREUR: kernel.bin dépasse 1536 octets"; exit 1)
-	dd if=/dev/zero of=os.img bs=512 count=4
+	@test $$(stat -f%z kernel.bin) -le 5632 || (echo "ERREUR: kernel.bin dépasse 5632 octets"; exit 1)
+	dd if=/dev/zero of=os.img bs=512 count=12
 	dd if=boot.bin of=os.img bs=512 count=1 conv=notrunc
 	dd if=kernel.bin of=os.img bs=512 seek=1 conv=notrunc
 
 run: os.img
-	$(QEMU) -drive format=raw,file=os.img -k fr
+	qemu-system-i386 -drive format=raw,file=os.img -k fr -full-screen -vga std
 
 size: kernel.bin
 	stat -f%z kernel.bin
